@@ -1,0 +1,52 @@
+name: Build Android
+
+on:
+  workflow_dispatch:
+    inputs:
+      build-type:
+        description: 'Build type'
+        required: true
+        type: choice
+        options:
+          - apk
+          - appbundle
+        default: apk
+
+jobs:
+  build:
+    name: Build Android
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '11'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build APK
+        if: ${{ inputs.build-type == 'apk' }}
+        run: flutter build apk --debug
+
+      - name: Build AppBundle
+        if: ${{ inputs.build-type == 'appbundle' }}
+        run: flutter build appbundle --debug
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.build-type == 'apk' && 'app-debug.apk' || 'app-debug.aab' }}
+          path: |
+            ${{ inputs.build-type == 'apk' && 'build/app/outputs/flutter-apk/app-debug.apk' || 'build/app/outputs/bundle/debug/app-debug.aab' }}
