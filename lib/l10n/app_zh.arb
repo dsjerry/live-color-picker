@@ -1,0 +1,18 @@
+{
+  "appTitle": "实时取色器",
+  "noCameraAvailable": "没有可用摄像头",
+  "cameraError": "摄像头错误：{description}",
+  "cameraInitFailed": "摄像头初始化失败：{error}",
+  "copied": "已复制：{text}",
+  "retry": "重试",
+  "hexLabel": "HEX",
+  "rgbLabel": "RGB",
+  "stability": "稳定性",
+  "stabilityDescription": "数值越高颜色越稳定，但对变化响应更慢",
+  "responsive": "快速",
+  "stable": "稳定",
+  "languageLabel": "语言",
+  "languageEnglish": "英文",
+  "languageChinese": "中文",
+  "systemLanguage": "跟随系统"
+}

@@ -1,0 +1,33 @@
+{
+  "appTitle": "Live Color Picker",
+  "noCameraAvailable": "No camera available",
+  "cameraError": "Camera error: {description}",
+  "@cameraError": {
+    "placeholders": {
+      "description": {}
+    }
+  },
+  "cameraInitFailed": "Failed to initialize camera: {error}",
+  "@cameraInitFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "copied": "Copied: {text}",
+  "@copied": {
+    "placeholders": {
+      "text": {}
+    }
+  },
+  "retry": "Retry",
+  "hexLabel": "HEX",
+  "rgbLabel": "RGB",
+  "stability": "Stability",
+  "stabilityDescription": "Higher values reduce color jitter but respond slower to changes.",
+  "responsive": "Responsive",
+  "stable": "Stable",
+  "languageLabel": "Language",
+  "languageEnglish": "English",
+  "languageChinese": "中文",
+  "systemLanguage": "System"
+}

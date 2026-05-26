@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
+import '../generated/app_localizations.dart';
+import '../providers/locale_provider.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
@@ -58,7 +60,7 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
-        setState(() => _error = 'No camera available');
+        setState(() => _error = AppLocalizations.of(context).noCameraAvailable);
         return;
       }
 
@@ -83,9 +85,9 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
 
       setState(() => _isInitialized = true);
     } on CameraException catch (e) {
-      setState(() => _error = 'Camera error: ${e.description}');
+      setState(() => _error = AppLocalizations.of(context).cameraError(description: e.description ?? ''));
     } catch (e) {
-      setState(() => _error = 'Failed to initialize camera: $e');
+      setState(() => _error = AppLocalizations.of(context).cameraInitFailed(error: e.toString()));
     }
   }
 
@@ -221,7 +223,7 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Copied: $text'),
+        content: Text(AppLocalizations.of(context).copied(text: text)),
         duration: const Duration(seconds: 1),
         behavior: SnackBarBehavior.floating,
         width: 280,
@@ -247,7 +249,7 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
                   setState(() => _error = null);
                   _initCamera();
                 },
-                child: const Text('Retry'),
+                child: Text(AppLocalizations.of(context).retry),
               ),
             ],
           ),
@@ -448,7 +450,7 @@ class _ColorInfoPanel extends StatelessWidget {
 
           // Hex value
           _ColorValueRow(
-            label: 'HEX',
+            label: AppLocalizations.of(context).hexLabel,
             value: hasFrame ? hex : '--',
             onCopy: hasFrame ? () => onCopy(hex) : null,
           ),
@@ -456,7 +458,7 @@ class _ColorInfoPanel extends StatelessWidget {
 
           // RGB value
           _ColorValueRow(
-            label: 'RGB',
+            label: AppLocalizations.of(context).rgbLabel,
             value: hasFrame ? rgb : '--',
             onCopy: hasFrame ? () => onCopy(rgb) : null,
           ),
@@ -561,16 +563,23 @@ class _SettingsSheetState extends State<_SettingsSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final lp = LocaleScope.of(context);
+
     return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.8,
+      ),
       decoration: BoxDecoration(
         color: const Color(0xFF1C1C1E),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           // Handle bar
           Center(
             child: Container(
@@ -584,9 +593,9 @@ class _SettingsSheetState extends State<_SettingsSheet> {
           ),
           const SizedBox(height: 24),
 
-          const Text(
-            'Stability',
-            style: TextStyle(
+          Text(
+            l10n.stability,
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 20,
               fontWeight: FontWeight.w600,
@@ -594,7 +603,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Higher values reduce color jitter but respond slower to changes.',
+            l10n.stabilityDescription,
             style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 13),
           ),
           const SizedBox(height: 24),
@@ -628,13 +637,84 @@ class _SettingsSheetState extends State<_SettingsSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Responsive',
+              Text(l10n.responsive,
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 12)),
-              Text('Stable',
+              Text(l10n.stable,
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 12)),
             ],
           ),
+
+          const SizedBox(height: 32),
+
+          // Language section
+          Text(
+            l10n.languageLabel,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _LanguageOption(
+            label: l10n.systemLanguage,
+            selected: lp.locale == null,
+            onTap: () => lp.setLocale(null),
+          ),
+          _LanguageOption(
+            label: l10n.languageEnglish,
+            selected: lp.locale?.languageCode == 'en',
+            onTap: () => lp.setLocale('en'),
+          ),
+          _LanguageOption(
+            label: l10n.languageChinese,
+            selected: lp.locale?.languageCode == 'zh',
+            onTap: () => lp.setLocale('zh'),
+          ),
         ],
+      ),
+      ),
+    );
+  }
+}
+
+class _LanguageOption extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _LanguageOption({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        margin: const EdgeInsets.only(bottom: 4),
+        decoration: BoxDecoration(
+          color: selected ? Colors.white.withValues(alpha: 0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: selected ? 0.9 : 0.5),
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            if (selected)
+              const Icon(Icons.check, size: 20, color: Colors.white70),
+          ],
+        ),
       ),
     );
   }
