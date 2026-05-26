@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(flutter --version)"
+      "Bash(flutter --version)",
+      "Bash(flutter pub *)",
+      "Bash(git -C \"d:/Dev/mobile/live-color-picker\" status --short)"
     ]
   }
 }
