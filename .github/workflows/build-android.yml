@@ -40,7 +40,7 @@ jobs:
 
       - name: Build APK
         if: ${{ inputs.build-type == 'apk' }}
-        run: flutter build apk --release
+        run: flutter build apk --release --split-per-abi
 
       - name: Build AppBundle
         if: ${{ inputs.build-type == 'appbundle' }}
@@ -52,4 +52,4 @@ jobs:
           tag_name: v${{ github.run_number }}-${{ github.run_attempt }}
           name: 'Android ${{ inputs.build-type }} — Build #${{ github.run_number }}'
           files: |
-            ${{ inputs.build-type == 'apk' && 'build/app/outputs/flutter-apk/app-release.apk' || 'build/app/outputs/bundle/release/app-release.aab' }}
+            ${{ inputs.build-type == 'apk' && 'build/app/outputs/flutter-apk/app-*-release.apk' || 'build/app/outputs/bundle/release/app-release.aab' }}
