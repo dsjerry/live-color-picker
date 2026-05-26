@@ -495,21 +495,24 @@ class _ColorValueRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        Container(
-          constraints: const BoxConstraints(minWidth: 160),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            value,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.9),
-              fontSize: 18,
-              fontFamily: 'Courier',
-              fontWeight: FontWeight.w500,
+        Flexible(
+          child: Container(
+            constraints: const BoxConstraints(minWidth: 140),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              value,
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.9),
+                fontSize: 18,
+                fontFamily: 'Courier',
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ),
