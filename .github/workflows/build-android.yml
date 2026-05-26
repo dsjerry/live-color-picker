@@ -40,11 +40,11 @@ jobs:
 
       - name: Build APK
         if: ${{ inputs.build-type == 'apk' }}
-        run: flutter build apk --debug
+        run: flutter build apk --release
 
       - name: Build AppBundle
         if: ${{ inputs.build-type == 'appbundle' }}
-        run: flutter build appbundle --debug
+        run: flutter build appbundle --release
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -52,4 +52,4 @@ jobs:
           tag_name: v${{ github.run_number }}-${{ github.run_attempt }}
           name: 'Android ${{ inputs.build-type }} — Build #${{ github.run_number }}'
           files: |
-            ${{ inputs.build-type == 'apk' && 'build/app/outputs/flutter-apk/app-debug.apk' || 'build/app/outputs/bundle/debug/app-debug.aab' }}
+            ${{ inputs.build-type == 'apk' && 'build/app/outputs/flutter-apk/app-release.apk' || 'build/app/outputs/bundle/release/app-release.aab' }}
