@@ -498,7 +498,7 @@ class _ColorValueRow extends StatelessWidget {
         Flexible(
           child: Container(
             constraints: const BoxConstraints(minWidth: 140),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(8),
@@ -506,7 +506,6 @@ class _ColorValueRow extends StatelessWidget {
             child: Text(
               value,
               textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.9),
                 fontSize: 18,
