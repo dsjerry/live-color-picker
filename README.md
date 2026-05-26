@@ -1,5 +1,7 @@
 # Live Color Picker
 
+[中文版本](README_zh.md)
+
 Real-time color picker using the device camera. Point your camera at anything and get the HEX / RGB color instantly.
 
 ## Features
