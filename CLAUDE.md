@@ -52,6 +52,6 @@ GitHub Actions workflow at [.github/workflows/build-android.yml](.github/workflo
 
 ## Platform-Specific Notes
 
-- Android namespace: `com.example.live_color_picker`
+- Android namespace: `com.dsjerry.live_color_picker`
 - Camera image format is selected per platform: `bgra8888` for iOS, `nv21` for Android (in `_initCamera()`)
 - App is portrait-locked via `SystemChrome.setPreferredOrientations`

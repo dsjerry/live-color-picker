@@ -1,4 +1,4 @@
-package com.example.live_color_picker
+package com.dsjerry.live_color_picker
 
 import io.flutter.embedding.android.FlutterActivity
 
