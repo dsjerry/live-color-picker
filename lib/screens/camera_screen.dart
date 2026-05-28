@@ -1,8 +1,11 @@
 import 'dart:math';
+import 'dart:ui';
+
+import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
-import 'package:camera/camera.dart';
 import '../generated/app_localizations.dart';
 import '../providers/locale_provider.dart';
 
@@ -13,12 +16,25 @@ class CameraScreen extends StatefulWidget {
   State<CameraScreen> createState() => _CameraScreenState();
 }
 
-class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver {
+class _CameraScreenState extends State<CameraScreen>
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   CameraController? _controller;
   bool _isInitialized = false;
   Color _detectedColor = Colors.white;
   bool _hasFrame = false;
   String? _error;
+
+  // Zoom state — Ticker continuously eases the preview zoom toward the target
+  late final Ticker _zoomTicker;
+  double _zoom = 1.0;
+  double _zoomTarget = 1.0;
+  double _minZoom = 1.0;
+  double _maxZoom = 1.0;
+  double _scaleBaseZoom = 1.0;
+  int _lastZoomTickMicros = 0;
+  double _lastAppliedZoom = -1;
+  double? _queuedZoom;
+  bool _isApplyingZoom = false;
 
   // Temporal smoothing state
   double _smoothedR = 255, _smoothedG = 255, _smoothedB = 255;
@@ -35,12 +51,15 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _zoomTicker = createTicker(_onZoomTick);
+    _zoomTicker.start();
     _initCamera();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _zoomTicker.dispose();
     _controller?.dispose();
     super.dispose();
   }
@@ -50,6 +69,7 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
     if (_controller == null || !_controller!.value.isInitialized) return;
     if (state == AppLifecycleState.inactive) {
       _controller!.dispose();
+      _controller = null;
       _isInitialized = false;
     } else if (state == AppLifecycleState.resumed) {
       _initCamera();
@@ -80,6 +100,18 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
 
       await _controller!.initialize();
       if (!mounted) return;
+
+      _minZoom = await _controller!.getMinZoomLevel();
+      _maxZoom = await _controller!.getMaxZoomLevel();
+      _zoom = _minZoom;
+      _zoomTarget = _minZoom;
+      _lastZoomTickMicros = 0;
+      _lastAppliedZoom = -1;
+      _queuedZoom = null;
+      _isApplyingZoom = false;
+
+      await _controller!.setZoomLevel(_zoom);
+      _lastAppliedZoom = _zoom;
 
       await _controller!.startImageStream(_processImage);
 
@@ -206,6 +238,58 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
 
   String get rgbString => 'rgb($_r, $_g, $_b)';
 
+  Future<void> _applyZoom(double zoom) async {
+    final clamped = zoom.clamp(_minZoom, _maxZoom);
+    if ((_lastAppliedZoom - clamped).abs() < 0.001) return;
+    _queuedZoom = clamped;
+    if (_isApplyingZoom) return;
+
+    _isApplyingZoom = true;
+    while (_queuedZoom != null) {
+      final nextZoom = _queuedZoom!;
+      _queuedZoom = null;
+
+      if ((_lastAppliedZoom - nextZoom).abs() < 0.001) {
+        continue;
+      }
+
+      _lastAppliedZoom = nextZoom;
+
+      try {
+        final controller = _controller;
+        if (controller != null && controller.value.isInitialized) {
+          await controller.setZoomLevel(nextZoom);
+        }
+      } catch (_) {
+        break;
+      }
+    }
+    _isApplyingZoom = false;
+  }
+
+  void _onZoomTick(Duration elapsed) {
+    if (_controller == null || !_controller!.value.isInitialized) return;
+
+    final previousTick = _lastZoomTickMicros;
+    _lastZoomTickMicros = elapsed.inMicroseconds;
+    final dt = previousTick == 0
+        ? 1 / 60
+        : ((_lastZoomTickMicros - previousTick) / 1000000.0).clamp(0.0, 0.05);
+
+    final error = _zoomTarget - _zoom;
+    const followSpeed = 14.0;
+    final smoothing = 1 - exp(-followSpeed * dt);
+    final nextZoom = lerpDouble(_zoom, _zoomTarget, smoothing)!;
+    if ((nextZoom - _zoom).abs() < 0.0001) {
+      if (error.abs() < 0.0005 && (_zoomTarget - _lastAppliedZoom).abs() >= 0.001) {
+        _applyZoom(_zoomTarget);
+      }
+      return;
+    }
+    _zoom = nextZoom;
+    _applyZoom(nextZoom);
+  }
+
   void _showSettings() {
     showModalBottomSheet(
       context: context,
@@ -271,20 +355,29 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Camera preview
+          // Camera preview (pinch-to-zoom)
           Center(
             child: AspectRatio(
               aspectRatio: 1 / cameraAspectRatio,
-              child: ClipRect(
-                child: Transform(
-                  alignment: Alignment.center,
-                  transform: Matrix4.rotationY(
-                    _controller!.description.lensDirection ==
-                            CameraLensDirection.front
-                        ? pi
-                        : 0,
+              child: GestureDetector(
+                onScaleStart: (_) => _scaleBaseZoom = _zoomTarget,
+                onScaleUpdate: (details) {
+                  final curvedScale = pow(details.scale, 0.85).toDouble();
+                  final target = (_scaleBaseZoom * curvedScale).clamp(_minZoom, _maxZoom);
+                  if ((target - _zoomTarget).abs() < 0.0005) return;
+                  _zoomTarget = target;
+                },
+                child: ClipRect(
+                  child: Transform(
+                    alignment: Alignment.center,
+                    transform: Matrix4.rotationY(
+                      _controller!.description.lensDirection ==
+                              CameraLensDirection.front
+                          ? pi
+                          : 0,
+                    ),
+                    child: CameraPreview(_controller!),
                   ),
-                  child: CameraPreview(_controller!),
                 ),
               ),
             ),

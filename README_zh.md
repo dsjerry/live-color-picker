@@ -47,6 +47,11 @@ flutter gen-l10n
 
 支持语言：英文（`en`）、中文（`zh`）。
 
+## 贡献者
+
+- **dsjerry** — 作者
+- **Claude (Anthropic)** — AI 助手，代码共同作者
+
 ## 项目结构
 
 ```

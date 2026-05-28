@@ -47,6 +47,11 @@ flutter gen-l10n
 
 Supported languages: English (`en`), Chinese (`zh`).
 
+## Contributors
+
+- **dsjerry** — author
+- **Claude (Anthropic)** — AI assistant, code co-author
+
 ## Project Structure
 
 ```
