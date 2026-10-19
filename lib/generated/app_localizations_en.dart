@@ -30,6 +30,27 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get capturePhoto => 'Capture photo and create palette';
+
+  @override
+  String get captureFailed => 'Could not capture photo';
+
+  @override
+  String get paletteTitle => 'Color study';
+
+  @override
+  String get dominantColors => 'Dominant colors';
+
+  @override
+  String get tapToCopyColor => 'Tap a color to copy its HEX value';
+
+  @override
+  String get sharePalette => 'Share palette as PNG';
+
+  @override
+  String get shareFailed => 'Could not share palette';
+
+  @override
   String get retry => 'Retry';
 
   @override

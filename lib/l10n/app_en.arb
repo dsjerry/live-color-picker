@@ -19,6 +19,13 @@
       "text": {}
     }
   },
+  "capturePhoto": "Capture photo and create palette",
+  "captureFailed": "Could not capture photo",
+  "paletteTitle": "Color study",
+  "dominantColors": "Dominant colors",
+  "tapToCopyColor": "Tap a color to copy its HEX value",
+  "sharePalette": "Share palette as PNG",
+  "shareFailed": "Could not share palette",
   "retry": "Retry",
   "hexLabel": "HEX",
   "rgbLabel": "RGB",

@@ -11,6 +11,15 @@ on:
           - apk
           - appbundle
         default: apk
+      app-version:
+        description: 'App version name (for example, 1.2.3)'
+        required: true
+        type: string
+        default: '1.0.0'
+      build-number:
+        description: 'Android build number; leave blank to use the workflow run number'
+        required: false
+        type: string
 
 jobs:
   build:
@@ -38,18 +47,47 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Resolve and validate version
+        id: version
+        env:
+          APP_VERSION: ${{ inputs.app-version }}
+          BUILD_NUMBER_INPUT: ${{ inputs.build-number }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          if [[ ! "$APP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::App version must use semantic version format, such as 1.2.3."
+            exit 1
+          fi
+
+          BUILD_NUMBER="$BUILD_NUMBER_INPUT"
+          if [[ -z "$BUILD_NUMBER" ]]; then
+            BUILD_NUMBER="$RUN_NUMBER"
+          fi
+          if [[ ! "$BUILD_NUMBER" =~ ^[1-9][0-9]{0,9}$ ]] || (( BUILD_NUMBER > 2100000000 )); then
+            echo "::error::Build number must be a positive integer no greater than 2100000000."
+            exit 1
+          fi
+
+          echo "build-number=$BUILD_NUMBER" >> "$GITHUB_OUTPUT"
+
       - name: Build APK
         if: ${{ inputs.build-type == 'apk' }}
-        run: flutter build apk --release --split-per-abi
+        env:
+          APP_VERSION: ${{ inputs.app-version }}
+          BUILD_NUMBER: ${{ steps.version.outputs.build-number }}
+        run: flutter build apk --release --split-per-abi --build-name="$APP_VERSION" --build-number="$BUILD_NUMBER"
 
       - name: Build AppBundle
         if: ${{ inputs.build-type == 'appbundle' }}
-        run: flutter build appbundle --release
+        env:
+          APP_VERSION: ${{ inputs.app-version }}
+          BUILD_NUMBER: ${{ steps.version.outputs.build-number }}
+        run: flutter build appbundle --release --build-name="$APP_VERSION" --build-number="$BUILD_NUMBER"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ github.run_number }}-${{ github.run_attempt }}
-          name: 'Android ${{ inputs.build-type }} — Build #${{ github.run_number }}'
+          tag_name: v${{ inputs.app-version }}+${{ steps.version.outputs.build-number }}
+          name: 'Android ${{ inputs.build-type }} — v${{ inputs.app-version }}+${{ steps.version.outputs.build-number }}'
           files: |
             ${{ inputs.build-type == 'apk' && 'build/app/outputs/flutter-apk/app-*-release.apk' || 'build/app/outputs/bundle/release/app-release.aab' }}

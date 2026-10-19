@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'dart:math';
-import 'dart:ui';
+import 'dart:ui' show lerpDouble;
+import 'dart:ui' as ui;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
@@ -8,6 +10,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import '../generated/app_localizations.dart';
 import '../providers/locale_provider.dart';
+import 'palette_capture_screen.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
@@ -20,6 +23,7 @@ class _CameraScreenState extends State<CameraScreen>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   CameraController? _controller;
   bool _isInitialized = false;
+  bool _isCapturing = false;
   Color _detectedColor = Colors.white;
   bool _hasFrame = false;
   String? _error;
@@ -238,6 +242,120 @@ class _CameraScreenState extends State<CameraScreen>
 
   String get rgbString => 'rgb($_r, $_g, $_b)';
 
+  Future<void> _capturePalette() async {
+    final controller = _controller;
+    if (_isCapturing ||
+        !_hasFrame ||
+        controller == null ||
+        !controller.value.isInitialized) {
+      return;
+    }
+
+    setState(() => _isCapturing = true);
+    var stoppedStream = false;
+    try {
+      if (controller.value.isStreamingImages) {
+        await controller.stopImageStream();
+        stoppedStream = true;
+      }
+
+      final photo = await controller.takePicture();
+      if (stoppedStream &&
+          controller.value.isInitialized &&
+          !controller.value.isStreamingImages) {
+        await controller.startImageStream(_processImage);
+        stoppedStream = false;
+      }
+
+      final palette = await _extractPalette(photo.path);
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              PaletteCaptureScreen(imagePath: photo.path, colors: palette),
+        ),
+      );
+    } catch (error) {
+      if (mounted) {
+        final l10n = AppLocalizations.of(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${l10n.captureFailed}: $error'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (stoppedStream &&
+          controller.value.isInitialized &&
+          !controller.value.isStreamingImages) {
+        try {
+          await controller.startImageStream(_processImage);
+        } catch (_) {
+          // The camera may have been disposed while capturing.
+        }
+      }
+      if (mounted) setState(() => _isCapturing = false);
+    }
+  }
+
+  Future<List<Color>> _extractPalette(String imagePath) async {
+    final codec = await ui.instantiateImageCodec(
+      await File(imagePath).readAsBytes(),
+      targetWidth: 128,
+    );
+    try {
+      final frame = await codec.getNextFrame();
+      final image = frame.image;
+      try {
+        final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+        if (data == null) return [_detectedColor];
+        final bytes = data.buffer.asUint8List();
+        final counts = List<int>.filled(4096, 0);
+        final redSums = List<int>.filled(4096, 0);
+        final greenSums = List<int>.filled(4096, 0);
+        final blueSums = List<int>.filled(4096, 0);
+
+        for (var offset = 0; offset < bytes.length; offset += 4) {
+          final r = bytes[offset];
+          final g = bytes[offset + 1];
+          final b = bytes[offset + 2];
+          final bin = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
+          counts[bin]++;
+          redSums[bin] += r;
+          greenSums[bin] += g;
+          blueSums[bin] += b;
+        }
+
+        final bins = List<int>.generate(counts.length, (index) => index)
+          ..sort((a, b) => counts[b].compareTo(counts[a]));
+        final palette = <Color>[];
+        for (final bin in bins) {
+          if (counts[bin] == 0) break;
+          final color = Color.fromARGB(
+            255,
+            redSums[bin] ~/ counts[bin],
+            greenSums[bin] ~/ counts[bin],
+            blueSums[bin] ~/ counts[bin],
+          );
+          final isDistinct = palette.every((existing) {
+            final dr = existing.r - color.r;
+            final dg = existing.g - color.g;
+            final db = existing.b - color.b;
+            return dr * dr + dg * dg + db * db > 0.025;
+          });
+          if (isDistinct) palette.add(color);
+          if (palette.length == 5) break;
+        }
+        return palette.isEmpty ? [_detectedColor] : palette;
+      } finally {
+        image.dispose();
+      }
+      } finally {
+        codec.dispose();
+      }
+  }
+
   Future<void> _applyZoom(double zoom) async {
     final clamped = zoom.clamp(_minZoom, _maxZoom);
     if ((_lastAppliedZoom - clamped).abs() < 0.001) return;
@@ -420,7 +538,9 @@ class _CameraScreenState extends State<CameraScreen>
               hex: hexString,
               rgb: rgbString,
               hasFrame: _hasFrame,
+              isCapturing: _isCapturing,
               onCopy: _copyToClipboard,
+              onCapture: _capturePalette,
             ),
           ),
         ],
@@ -494,14 +614,18 @@ class _ColorInfoPanel extends StatelessWidget {
   final String hex;
   final String rgb;
   final bool hasFrame;
+  final bool isCapturing;
   final void Function(String) onCopy;
+  final VoidCallback onCapture;
 
   const _ColorInfoPanel({
     required this.color,
     required this.hex,
     required this.rgb,
     required this.hasFrame,
+    required this.isCapturing,
     required this.onCopy,
+    required this.onCapture,
   });
 
   @override
@@ -522,21 +646,61 @@ class _ColorInfoPanel extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Color swatch
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: hasFrame ? color : Colors.grey.shade800,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white30, width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: (hasFrame ? color : Colors.grey).withValues(alpha: 0.5),
-                  blurRadius: 16,
-                  spreadRadius: 2,
-                ),
-              ],
+          // Tapping the live swatch captures a photo and builds its palette.
+          GestureDetector(
+            onTap: hasFrame && !isCapturing ? onCapture : null,
+            child: Tooltip(
+              message: AppLocalizations.of(context).capturePhoto,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: hasFrame ? color : Colors.grey.shade800,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white30, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: (hasFrame ? color : Colors.grey).withValues(
+                            alpha: 0.5,
+                          ),
+                          blurRadius: 16,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: isCapturing
+                        ? const Padding(
+                            padding: EdgeInsets.all(18),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : null,
+                  ),
+                  if (!isCapturing)
+                    Positioned(
+                      right: -2,
+                      bottom: -2,
+                      child: Container(
+                        padding: const EdgeInsets.all(5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF202124),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white70),
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt,
+                          size: 13,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 16),

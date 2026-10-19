@@ -30,6 +30,27 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get capturePhoto => '拍摄画面并生成调色板';
+
+  @override
+  String get captureFailed => '拍摄失败';
+
+  @override
+  String get paletteTitle => '画面色卡';
+
+  @override
+  String get dominantColors => '画面主要颜色';
+
+  @override
+  String get tapToCopyColor => '点击色卡复制 HEX 色值';
+
+  @override
+  String get sharePalette => '以 PNG 分享调色板';
+
+  @override
+  String get shareFailed => '分享调色板失败';
+
+  @override
   String get retry => '重试';
 
   @override

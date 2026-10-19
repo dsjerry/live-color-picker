@@ -128,6 +128,48 @@ abstract class AppLocalizations {
   /// **'Copied: {text}'**
   String copied({required Object text});
 
+  /// No description provided for @capturePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Capture photo and create palette'**
+  String get capturePhoto;
+
+  /// No description provided for @captureFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not capture photo'**
+  String get captureFailed;
+
+  /// No description provided for @paletteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Color study'**
+  String get paletteTitle;
+
+  /// No description provided for @dominantColors.
+  ///
+  /// In en, this message translates to:
+  /// **'Dominant colors'**
+  String get dominantColors;
+
+  /// No description provided for @tapToCopyColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a color to copy its HEX value'**
+  String get tapToCopyColor;
+
+  /// No description provided for @sharePalette.
+  ///
+  /// In en, this message translates to:
+  /// **'Share palette as PNG'**
+  String get sharePalette;
+
+  /// No description provided for @shareFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not share palette'**
+  String get shareFailed;
+
   /// No description provided for @retry.
   ///
   /// In en, this message translates to:
