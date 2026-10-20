@@ -44,6 +44,14 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Cache Gradle distribution
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/wrapper/dists
+          key: gradle-wrapper-${{ runner.os }}-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-wrapper-${{ runner.os }}-
+
       - name: Get dependencies
         run: flutter pub get
 
